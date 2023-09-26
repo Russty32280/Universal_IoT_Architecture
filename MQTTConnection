@@ -36,7 +36,7 @@ void connect() {
   Serial.println("\nconnected!");
 
   //put any topics you want to subscribe to here
-  //client.subscribe("your topic"); //subscribe to a topic
+  client.subscribe("Chatting"); //subscribe to a topic
 }
 
 void messageReceived(String &topic, String &payload) {
@@ -66,10 +66,35 @@ void loop() {
   if (!client.connected()) {
     connect();
   }
+
+  const int MAX_MESSAGE_LENGTH = 100; //maximum length of serial input message
+  int message_pos = 0;                //indexing through serial input
+  char message[MAX_MESSAGE_LENGTH];   //stores serial input message
   
-  // publish a message roughly every second.
-  if (millis() - lastMillis > 1000) {
-    lastMillis = millis();
-    client.publish("/TestMessage", "It works!");
+  while(Serial.available() > 0){
+    //is something waiting in the serial bus?
+
+    char input = Serial.read(); //reads serial bus and stores it
+    
+    if(input != '\n' && (message_pos < MAX_MESSAGE_LENGTH - 1)){
+      //stores input byte into input message array
+      //if it is not a new line char or 100th char
+      
+      message[message_pos] = input;
+      message_pos++;
+      
+    }else{
+      //end of message. will publish the message and clear it
+      
+      message[message_pos] = '\0';
+      message_pos = 0;
+      client.publish("/Chatting", message);
+      Serial.println(message);
+
+      /*for(int i=0; i<MAX_MESSAGE_LENGTH-1; i++){
+        message[i] = '\0';
+      }*/
+      
+    }
   }
 }
