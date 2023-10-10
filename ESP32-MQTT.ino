@@ -1,6 +1,8 @@
 //This code connects an ESP32 wifi module
-//to a private shiftr.io instance and publishes a
-//message to a topic in that instance.
+//to the specified wifi and to a private shiftr.io instance 
+//It then wait for the user to provide a serial input and publishes 
+//it to the chatting topic. It will also print all other messages
+//published to that topic to the serial output.
 
 #include <WiFi.h>
 #include <MQTT.h>
