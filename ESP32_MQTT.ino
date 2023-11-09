@@ -26,6 +26,9 @@ const char mqttUsername[] = "rusmartlabclinic"; //will always be this for our in
 const char mqttPassword[] = "RUSmartLabClinic"; //password for your MQTT-Broker
 String client_id; //client id in string form rather than c-string
 
+const int testTemp = 68;
+const double testPercent = 92.5;
+
 struct NCAP{
   String name;
   bool flag;
@@ -87,10 +90,28 @@ void messageReceived(String &topic, String &payload) {
     Serial.println(ncap.name);
     return;
   }
+  payload = "temperature"; //remove after testing
   if(topic.compareTo(ncap.downlink())==0){
-    ncap.flag = true;
+    client.publish(ncap.uplink(), sensorReading(payload));
     return;
   }
+}
+
+String sensorReading(String payload) {
+  //react on MQTT commands with according functions
+  if(payload == "temperature")
+      return(String(testTemp));
+
+  else if(payload == "humidity")
+      return(String(testPercent));
+
+  else if(payload == "count")
+      return("seven");
+
+  else return("No sensor data available");
+
+  
+  
 }
 
 void generateName(){
