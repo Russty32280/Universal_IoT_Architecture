@@ -51,9 +51,9 @@ struct NCAP{
 NCAP ncap;
 
 
-vector<String> subscriptions = {"NCAP_Server_TIM_Discover"};
+vector<String> subscriptions = {"NCAP_Server_Discover"};
 void update_Subscriptions(){
-  subscriptions = {"NCAP_Server_TIM_Discover"};
+  subscriptions = {"NCAP_Server_Discover"};
   if(ncap.isInitialized){
     subscriptions.push_back(ncap.downlink());
   }
@@ -90,10 +90,28 @@ void messageReceived(String &topic, String &payload) {
     Serial.println(ncap.name);
     return;
   }
-  payload = "temperature"; //remove after testing
-  if(topic.compareTo(ncap.downlink())==0){
-    client.publish(ncap.uplink(), sensorReading(payload));
-    return;
+  // payload = "temperature"; //remove after testing
+  // if(topic.compareTo(ncap.downlink())==0){
+  //   client.publish(ncap.uplink(), sensorReading(payload));
+  //   return;
+  // }
+  if(topic.compareTo(ncap.downlink()) == 0)
+    {
+    parseMessage(payload);
+    }
+}
+
+void parseMessage(String payload) {
+  char formatted [15];
+  int count = 0;
+  for(int i = 0 ; i < payload.length() ; i++)
+  {
+    if(payload.charAt(i) != ',')
+    {
+      formatted[count] = payload.charAt(i);
+      count++;
+      Serial.print(formatted[count]);
+    }
   }
 }
 
@@ -155,8 +173,4 @@ void loop() {
     client.publish(ncap.response(), client_id);
   }
   
-  if(ncap.flag){
-    client.publish(ncap.uplink(), "Hi");
-    ncap.flag = false;
-  }
 }
