@@ -95,7 +95,7 @@ void messageReceived(String &topic, String &payload) {
   //   client.publish(ncap.uplink(), sensorReading(payload));
   //   return;
   // }
-  if(topic.compareTo(ncap.downlink()) == 0)
+  if(ncap.isInitialized && topic.compareTo(ncap.downlink()) == 0)
     {
     parseMessage(payload);
     }
@@ -110,9 +110,29 @@ void parseMessage(String payload) {
     {
       formatted[count] = payload.charAt(i);
       count++;
-      Serial.print(formatted[count]);
+      //Serial.print(formatted[count]);
     }
   }
+  String reply;
+  if(formatted[0] == '1')
+  {
+    if(formatted[1] == '6')
+    {
+      if(formatted[2] == '1')
+      {
+        reply = "1,6,2,55,0," + String(formatted[4]) + "," + String(formatted[5]) + "," + "0,0,0"; //tim_id (ncap_id) replaced with formatted[5] //ncap.name replaced with formatted[4]
+      }
+    }
+  }
+  if(reply != NULL)
+  {
+    client.publish(ncap.uplink(), reply);
+  }
+
+  // else
+  // {
+  // client.publish(ncap.uplink(), "error message not decoded");
+  // }
 }
 
 String sensorReading(String payload) {
