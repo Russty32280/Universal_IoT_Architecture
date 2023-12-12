@@ -10,6 +10,10 @@
 #include <vector>
 using namespace std;
 
+#include "Adafruit_SHT4x.h"
+Adafruit_SHT4x sht4 = Adafruit_SHT4x();
+
+
 WiFiClient net;
 MQTTClient client;
 
@@ -28,6 +32,16 @@ String client_id; //client id in string form rather than c-string
 
 const int testTemp = 68;
 const double testPercent = 92.5;
+
+struct XDCR{
+  String name;
+  String data;
+
+  XDCR(String str){
+    name = str;
+  }
+};
+XDCR XDCRlist[] = {XDCR("Temperature")};
 
 struct NCAP{
   String name;
@@ -124,6 +138,22 @@ void parseMessage(String payload) {
       }
     }
   }
+  else if(formatted[0] == '2')
+  {
+    if(formatted[1] == '1')
+    {
+      if(formatted[2] == '1')
+      {
+        sensors_event_t humidity, temp;
+
+        sht4.getEvent(&humidity, &temp);
+        Serial.print(temp.temperature);
+        XDCRlist[int((formatted[6])- '0')].data = temp.temperature;
+        reply = "2,1,2,55,0," + String(formatted[4]) + "," + String(formatted[5]) + "," + formatted[6] + "," + XDCRlist[formatted[6]].data;
+      }
+    }
+  }
+
   if(reply != NULL)
   {
     client.publish(ncap.uplink(), reply);
@@ -167,6 +197,8 @@ void setup() {
 
   randomSeed((unsigned) time(NULL));
   generateName();
+
+  
 
   WiFi.begin(ssid);
   //WiFi.begin(ssid, pass);
