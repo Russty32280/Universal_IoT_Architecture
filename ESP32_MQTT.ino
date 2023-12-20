@@ -2,9 +2,12 @@
 //to the specified wifi and to a private shiftr.io instance.
 //It will then search for an NCAP to establish communications with.
 //Once an NCAP is found. It sends its name to it and creates an uplink
-//and downlink channel.
+//and downlink channel for communication.
+
+//Boards used :DOIT ESP32 DEVKIT V1 and Node32s
 
 #include <WiFi.h>
+#include <NTPClient.h>
 #include <MQTT.h>
 #include <iostream> 
 #include <vector>
@@ -13,9 +16,10 @@ using namespace std;
 #include "Adafruit_SHT4x.h"
 Adafruit_SHT4x sht4 = Adafruit_SHT4x();
 
-
 WiFiClient net;
 MQTTClient client;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "time.nist.gov");
 
 unsigned long lastMillis = 0;
 
@@ -30,18 +34,17 @@ const char mqttUsername[] = "rusmartlabclinic"; //will always be this for our in
 const char mqttPassword[] = "RUSmartLabClinic"; //password for your MQTT-Broker
 String client_id; //client id in string form rather than c-string
 
-const int testTemp = 68;
-const double testPercent = 92.5;
-
 struct XDCR{
   String name;
+  String ID;
   String data;
-
-  XDCR(String str){
+  XDCR(String str, String id){
     name = str;
+    ID = id;
   }
 };
-XDCR XDCRlist[] = {XDCR("Temperature")};
+const int numChan = 1;
+XDCR XDCRList[numChan] = {XDCR("Temperature","0")};
 
 struct NCAP{
   String name;
@@ -61,9 +64,7 @@ struct NCAP{
     isInitialized = false;
   }
 };
-
 NCAP ncap;
-
 
 vector<String> subscriptions = {"NCAP_Server_Discover"};
 void update_Subscriptions(){
@@ -96,7 +97,6 @@ void connect() {
 
 void messageReceived(String &topic, String &payload) {
   //react on MQTT commands with according functions
-  Serial.println("incoming: " + topic + " - " + payload);
   
   if(topic.compareTo(subscriptions.at(0))==0 && !ncap.isInitialized){
     ncap.name = payload;
@@ -104,11 +104,8 @@ void messageReceived(String &topic, String &payload) {
     Serial.println(ncap.name);
     return;
   }
-  // payload = "temperature"; //remove after testing
-  // if(topic.compareTo(ncap.downlink())==0){
-  //   client.publish(ncap.uplink(), sensorReading(payload));
-  //   return;
-  // }
+  Serial.println("incoming: " + topic + " - " + payload);
+  
   if(ncap.isInitialized && topic.compareTo(ncap.downlink()) == 0)
     {
     parseMessage(payload);
@@ -134,7 +131,18 @@ void parseMessage(String payload) {
     {
       if(formatted[2] == '1')
       {
-        reply = "1,6,2,55,0," + String(formatted[4]) + "," + String(formatted[5]) + "," + "0,0,0"; //tim_id (ncap_id) replaced with formatted[5] //ncap.name replaced with formatted[4]
+        String names, IDs;
+        for(int i = 0; i < numChan; i++){
+          String spacer = "";
+          if(i != numChan-1){
+            spacer = ";";
+          }
+          names += XDCRList[i].name + spacer;
+          IDs += XDCRList[i].ID + spacer;
+        }
+        reply = "1,6,2,55,0," + String(formatted[5]) + "," + String(numChan)+ "," + IDs + "," + names;
+        Serial.println(IDs);
+        Serial.println(names);
       }
     }
   }
@@ -145,11 +153,16 @@ void parseMessage(String payload) {
       if(formatted[2] == '1')
       {
         sensors_event_t humidity, temp;
+        sht4.getEvent(&humidity, &temp);// populate temp and humidity objects with fresh data
 
-        sht4.getEvent(&humidity, &temp);
-        Serial.print(temp.temperature);
-        XDCRlist[int((formatted[6])- '0')].data = temp.temperature;
-        reply = "2,1,2,55,0," + String(formatted[4]) + "," + String(formatted[5]) + "," + formatted[6] + "," + XDCRlist[formatted[6]].data;
+        timeClient.update();
+        String timestamp = timeClient.getFormattedTime();
+        Serial.println(timestamp);
+        
+        XDCRList[int((formatted[6])- '0')].data = String(temp.temperature);
+        Serial.println(XDCRList[int((formatted[6])- '0')].data);
+        reply = "2,1,2,55,0," + String(formatted[4]) + "," + String(formatted[5]) + "," + String(formatted[6]) + "," + XDCRList[int((formatted[6])- '0')].data + "," + timestamp;
+        Serial.println(reply);
       }
     }
   }
@@ -157,29 +170,18 @@ void parseMessage(String payload) {
   if(reply != NULL)
   {
     client.publish(ncap.uplink(), reply);
+    blinky();
   }
-
-  // else
-  // {
-  // client.publish(ncap.uplink(), "error message not decoded");
-  // }
 }
 
-String sensorReading(String payload) {
-  //react on MQTT commands with according functions
-  if(payload == "temperature")
-      return(String(testTemp));
-
-  else if(payload == "humidity")
-      return(String(testPercent));
-
-  else if(payload == "count")
-      return("seven");
-
-  else return("No sensor data available");
-
-  
-  
+void blinky(){
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(50);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(50);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(50);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void generateName(){
@@ -198,10 +200,23 @@ void setup() {
   randomSeed((unsigned) time(NULL));
   generateName();
 
+  pinMode(LED_BUILTIN, OUTPUT);
+  blinky();
   
+  Serial.println("Adafruit SHT4x test");
+  if (! sht4.begin()) {
+    Serial.println("Couldn't find SHT4x");
+    while (1) delay(1);
+  }
+  Serial.println("Found SHT4x sensor");
+  Serial.print("Serial number 0x");
+  Serial.println(sht4.readSerial(), HEX);
 
   WiFi.begin(ssid);
   //WiFi.begin(ssid, pass);
+
+  timeClient.begin();
+  timeClient.setTimeOffset(-18000);
   
   client.begin("rusmartlabclinic.cloud.shiftr.io", net); //put the IP-Address of your broker here
   client.onMessage(messageReceived);
