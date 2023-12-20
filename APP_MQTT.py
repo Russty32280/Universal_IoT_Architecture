@@ -1,8 +1,8 @@
 #This code connects to a private shiftr.io instance
-#using python. It establishes itself as an NCAP and
-#broadcasts its name on a known channel so any TIMs
-#can communicate to it. Once a TIM reaches out to it
-#it creates an uplink and downlink channel to that TIM.
+#using python. It establishes itself as an APP and
+#connects to the NCAP on the network.
+#Also features a simple GUI for connecting to the networking
+#and sending messages to the NCAP.
 
 import paho.mqtt.client as mqtt
 import schedule
@@ -55,6 +55,50 @@ def on_connect(client, userdata, flags, rc):
 def on_disconnect(client, userdata, rc):
     print("Disconnected from MQTT broker")
 
+
+def MessageParse(msg):
+    parse = msg.split(",")
+    NetSvcType = parse[0]
+    NetSvcID =  parse[1]
+    MsgType =  parse[2]
+    MsgLength =  parse[3]
+    if NetSvcType == '1': # It is a discovery service
+        if NetSvcID == '4': # NCAP Discovery Request Note -> should be 4
+            if MsgType == "2":
+                errorCode = parse[4]
+                APP_ID = parse[5]
+                NCAP_ID = parse[6]
+                NCAP_Name = parse[7]
+                AddressType = parse[8]
+                NCAP_Address = parse[9]
+                return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'errorCode':errorCode, 'APP_ID':APP_ID, 'NCAP_ID':NCAP_ID, 'NCAP_Name':NCAP_Name, 'AddressType':AddressType, 'NCAP_Address': NCAP_Address}
+        elif NetSvcID == "5":
+            if MsgType == "2":
+                errorCode = parse[4]
+                numTims = parse[5]
+                timIDs = parse[6]
+                timNames = parse[7]
+                return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'errorCode':errorCode, 'numTims':numTims, 'timIDs':timIDs, 'timNames':timNames}
+        elif NetSvcID == "6":
+            if MsgType == "2":
+                errorCode = parse[4]
+                TIM_ID = parse[5]
+                NumXDCRChan = parse[6]
+                XDCR_ChanIDs = parse[7]
+                XDCR_ChanNames = parse[8]
+                return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'errorCode':errorCode, 'TIM_ID': TIM_ID, 'NumChan':NumXDCRChan, 'XDCR_ChanIDs':XDCR_ChanIDs, 'XDCR_ChanNames':XDCR_ChanNames}
+    elif NetSvcType == '2':
+        if NetSvcID == '1':
+            if MsgType == '2':
+                errorCode = parse[4]
+                NCAP_ID = parse[5]
+                TIM_ID = parse[6]
+                XDCR_ChanIDs = parse[7]
+                Data = parse[8]
+                Timestamp = parse[9]
+                return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'errorCode':errorCode, 'NCAP_ID':NCAP_ID, 'TIM_ID':TIM_ID, 'XDCR_ChanIDs':XDCR_ChanIDs, 'Data':Data, 'Timestamp':Timestamp}
+          
+
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
     payload = str(msg.payload.decode("utf-8"))
@@ -68,7 +112,9 @@ def on_message(client, userdata, msg):
     #Handles messaages received from NCAPs
     for ncap in NCAP_List:
         if(msg.topic == ncap.uplink()):
-            label3.config(text="Received\n"+payload)
+            MsgDict = MessageParse(payload)
+            formatted_dict = "\n".join([f"{key}: {value}\n" for key, value in MsgDict.items()])
+            label3.config(text=formatted_dict)
 
 # Set the callback functions
 client.on_connect = on_connect
@@ -94,7 +140,7 @@ def downlink(event=None):
 #region defineTkinter
 window = tk.Tk()
 
-window.geometry("450x400")
+window.geometry("450x500")
 
 window.columnconfigure([0, 1, 2], minsize=150)
 window.rowconfigure([0], minsize=100)
@@ -134,7 +180,3 @@ def NCAPResponse():
 
 window.after(0, NCAPResponse)
 window.mainloop()
-
-    
-    
-
