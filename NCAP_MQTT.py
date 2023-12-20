@@ -1,8 +1,8 @@
 #This code connects to a private shiftr.io instance
 #using python. It establishes itself as an NCAP and
 #broadcasts its name on a known channel so any TIMs
-#can communicate to it. Once a TIM reaches out to it
-#it creates an uplink and downlink channel to that TIM.
+#can communicate to it. Once a TIM or APP reaches out to it
+#it creates an uplink and downlink channel to that device.
 
 import paho.mqtt.client as mqtt
 import schedule
@@ -78,7 +78,9 @@ def on_disconnect(client, userdata, rc):
 
 # Parsing Engine
 def MessageParse(msg):
+    print(msg)
     parse = msg.split(",")
+    print(parse)
     NetSvcType = parse[0]
     NetSvcID =  parse[1]
     MsgType =  parse[2]
@@ -98,50 +100,31 @@ def MessageParse(msg):
                 TIM_ID = parse[5]
                 Timeout = parse[6]
                 return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'NCAP_ID':NCAP_ID,  'TIM_ID':TIM_ID, 'Timeout':Timeout}
-            if MsgType == "2":
+            elif MsgType == "2":
+                errorCode = parse[4]
+                TIM_ID = parse[5]
+                NumXDCRChan = parse[6]
+                XDCR_ChanIDs = parse[7]
+                XDCR_ChanNames = parse[8]
+                return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'errorCode':errorCode, 'TIM_ID': TIM_ID, 'NumXDCRChan':NumXDCRChan, 'XDCR_ChanIDs':XDCR_ChanIDs, 'XDCR_ChanNames':XDCR_ChanNames}
+    elif NetSvcType == '2':
+        if NetSvcID == '1':
+            if MsgType == '1':
+                NCAP_ID = parse[4]
+                TIM_ID = parse[5]
+                XDCR_ChanIDs = parse[6]
+                Mode = parse[7]
+                Timeout = parse[8]
+                return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'NCAP_ID':NCAP_ID, 'TIM_ID':TIM_ID, 'XDCR_ChanIDs':XDCR_ChanIDs, 'Timeout':Timeout, 'Mode':Mode}
+            elif MsgType == '2':
                 errorCode = parse[4]
                 NCAP_ID = parse[5]
                 TIM_ID = parse[6]
-                NumXDCRChan = parse[7]
-                XDCR_ChanID = parse[8]
-                XDCR_ChanNames = parse[9]
-                return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'errorCode':errorCode, 'NCAP_ID':NCAP_ID, 'TIM_ID':TIM_ID, 'NumChan':NumXDCRChan, 'XDCR_ChanID':XDCR_ChanID, 'XDCR_ChanID':XDCR_ChanNames}
-    elif NetSvcType == '2':
-        if NetSvcID == '1':
-            APP_ID = parse[4]
-            NCAP_ID = parse[5]
-            TIM_ID = parse[6]
-            XDCR_ChanID = parse[7]
-            Timeout = parse[8]
-            Mode = parse[9]
-            return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'APP_ID':APP_ID, 'NCAP_ID':NCAP_ID, 'TIM_ID':TIM_ID, 'XDCR_ChanID':XDCR_ChanID, 'Timeout':Timeout, 'Mode':Mode}
-        elif NetSvcID == '7':
-            APP_ID = parse[4]
-            NCAP_ID = parse[5]
-            TIM_ID = parse[6]
-            XDCR_ChanID = parse[7]
-            WriteActuatorData = parse[8]
-            Timeout = parse[9]
-            Mode = parse[10]
-            return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'APP_ID':APP_ID, 'NCAP_ID':NCAP_ID, 'TIM_ID':TIM_ID, 'XDCR_ChanID':XDCR_ChanID, 'WriteActuatorData':WriteActuatorData, 'Timeout':Timeout, 'Mode':Mode}
-    elif NetSvcType == '4':
-        if NetSvcID == '1':
-            APP_ID = parse[4]
-            NCAP_ID = parse[5]
-            TIM_ID = parse[6]
-            NumChan = parse[7]
-            XDCR_ChanID = parse[8]
-            AlertMinMaxArray = parse[9]
-            return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'APP_ID':APP_ID, 'NCAP_ID':NCAP_ID, 'TIM_ID':TIM_ID, 'NumChan':NumChan, 'XDCR_ChanID':XDCR_ChanID, 'AlertMinMaxArray':AlertMinMaxArray}
-        elif NetSvcID == '2': #THIS IS 100% WRONG
-            APP_ID = parse[4]
-            NCAP_ID = parse[5]
-            TIM_ID = parse[6]
-            NumChan = parse[7]
-            XDCR_ChanID = parse[8]
-            AlertMinMaxArray = parse[9]
-            return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'APP_ID':APP_ID, 'NCAP_ID':NCAP_ID, 'TIM_ID':TIM_ID, 'NumChan':NumChan, 'XDCR_ChanID':XDCR_ChanID, 'AlertMinMaxArray':AlertMinMaxArray}
-
+                XDCR_ChanIDs = parse[7]
+                Data = parse[8]
+                Timestamp = parse[9]
+                return{'NetSvcType':NetSvcType, 'NetSvcID':NetSvcID, 'MsgType':MsgType, 'MsgLength':MsgLength, 'errorCode':errorCode, 'NCAP_ID':NCAP_ID, 'TIM_ID':TIM_ID, 'XDCR_ChanIDs':XDCR_ChanIDs, 'Data':Data, 'Timestamp':Timestamp}
+            
 response = None
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
@@ -177,6 +160,7 @@ def on_message(client, userdata, msg):
         except:
             print("Message not recognized")
         else:
+            global response
             print(MsgDict)
             if MsgDict["NetSvcType"] == '1':
                 if MsgDict["NetSvcID"] == '4':
@@ -187,19 +171,21 @@ def on_message(client, userdata, msg):
                     if MsgDict["MsgType"] == '1':
                         _thread.start_new_thread(Thread162, (tuple(MsgDict.items()), payload, ResponseTopic, TIM_List[int(MsgDict["TIM_ID"])].event))
                     elif MsgDict["MsgType"] == '2':
-                        global response
                         response = payload
-                        TIM_List[int(MsgDict["TIM_ID"])].event.set()
-            # elif MsgDict["NetSvcType"] == '2':
-            #     if MsgDict["NetSvcID"] == '1':
-            #         _thread.start_new_thread(Thread212, (tuple(MsgDict.items()), ('ResponseTopic', ResponseTopic)))
-            #     elif MsgDict["NetSvcID"] == '7':
-            #         _thread.start_new_thread(Thread272, (tuple(MsgDict.items()), ('ResponseTopic', ResponseTopic)))
-            # elif MsgDict["NetSvcType"] == '4':
-            #     if MsgDict["NetSvcID"] == '1':
-            #         _thread.start_new_thread(Thread412, (tuple(MsgDict.items()), ('ResponseTopic', ResponseTopic)))
-            #     elif MsgDict["NetSvcID"] == '2':
-            #         _thread.start_new_thread(Thread422, (tuple(MsgDict.items()), ('ResponseTopic', ResponseTopic)))
+                        try:
+                            TIM_List[int(MsgDict["TIM_ID"])].event.set()
+                        except:
+                            print("No TIM found with that ID")
+            elif MsgDict["NetSvcType"] == '2':
+                if MsgDict["NetSvcID"] == '1':
+                    if MsgDict["MsgType"] == '1':
+                        _thread.start_new_thread(Thread212, (tuple(MsgDict.items()), payload, ResponseTopic, TIM_List[int(MsgDict["TIM_ID"])].event))
+                    elif MsgDict["MsgType"] == '2':
+                        response = payload
+                        try:
+                            TIM_List[int(MsgDict["TIM_ID"])].event.set()
+                        except:
+                            print("No TIM found with that ID")
 
 # Use this comment structure for service threads
 '''
@@ -246,8 +232,9 @@ Message Type         (MsgType)    = 2 (Reply)
 '''
 def Thread152(MSG_Tuple, topic):
     MSG = dict(MSG_Tuple)
-    tims = [TIM.name for TIM in TIM_List]
-    response = '1,5,2,39,' + str(len(TIM_List)) + ',' + ';'.join(tims)
+    TIM_NAMES = [TIM.name for TIM in TIM_List]
+    TIM_IDS = [str(index) for index, tim_name in enumerate(TIM_NAMES)]
+    response = '1,5,2,39,0,' + str(len(TIM_List)) + ',' + ';'.join(TIM_IDS) + ',' + ';'.join(TIM_NAMES)
     client.publish(topic, response)
 
 '''
@@ -261,11 +248,9 @@ Message Type         (MsgType)    = 2 (Reply)
 '''
 def Thread162(MSG_Tuple, payload, topic, event):
     MSG = dict(MSG_Tuple)
-    #response = '1,6,2,55,' + '0,' + NCAP_ID + ',' + MSG["TIM_ID"] + ',' + NumChan + ',' + XDCR_ChanID_Array + ',' + XDCR_ChanNameArray
+    #response = '1,6,2,55,' + '0,' + NCAP_ID + ',' + MSG["TIM_ID"] + ',' + NumChan + ',' + XDCR_ChanIDs_Array + ',' + XDCR_ChanNameArray
     client.publish(TIM_List[int(MSG["TIM_ID"])].downlink(), payload)
     event.wait()
-    print(topic)
-    print(response)
     client.publish(topic, response)
     event.clear()
 
@@ -279,20 +264,12 @@ def Thread162(MSG_Tuple, payload, topic, event):
 # Network Service ID   (NetSvcId)   = 1 (SyncReadTransducerSampleDataFromAChannelOfATIM)
 # Message Type         (MsgType)    = 2 (Reply)
 # '''
-# def Thread212(MSG_Tuple, SenderInfo):
-#     print("In Thread212")
-#     MSG = dict(MSG_Tuple)
-#     ReadSensorData = "0"
-#     if MSG["TIM_ID"] == '1':
-#         if MSG["XDCR_ChanID"] == '1':
-#             #ReadSensorData = str(round(sensor.temperature,2))
-#             ReadSensorData = str(20 + randint(0,10))
-#     response = '2,1,1,N,0,' + NCAP_ID + ',' + TIM_ID + ',' + MSG["XDCR_ChanID"] + ',' + ReadSensorData + ',' + time.strftime("%H:%M:%S", time.localtime())
-#     print(response)
-#     #publish.single(ResponseTopic, response, hostname=mqttBroker)
-#     LocalResponseTopic = "RUSMARTLAB/"+MSG["APP_ID"]
-#     print("Local Reponse Topic: " + LocalResponseTopic + "\n")
-#     publish.single(LocalResponseTopic, response, hostname=mqttBroker)
+def Thread212(MSG_Tuple, payload, topic, event):
+    MSG = dict(MSG_Tuple)
+    client.publish(TIM_List[int(MSG["TIM_ID"])].downlink(), payload)
+    event.wait()
+    client.publish(topic, response)
+    event.clear()
 
 # '''
 # 10.2.7 Synchronous write transducer sample data to a channel of a TIM service (02 07) - Reply
@@ -307,10 +284,10 @@ def Thread162(MSG_Tuple, payload, topic, event):
 # def Thread272(MSG_Tuple, SenderInfo):
 #     MSG = dict(MSG_Tuple)
 #     if MSG["TIM_ID"] == '1':
-#         if MSG["XDCR_ChanID"] == '2':
+#         if MSG["XDCR_ChanIDs"] == '2':
 #             print(str(MSG["WriteActuatorData"]))
 #             display.show(MSG["WriteActuatorData"])
-#     response = '2,7,2,19,0,' + NCAP_ID + ',' + TIM_ID + ',' + MSG["XDCR_ChanID"]
+#     response = '2,7,2,19,0,' + NCAP_ID + ',' + TIM_ID + ',' + MSG["XDCR_ChanIDs"]
 #     #publish.single(ResponseTopic, response, hostname=mqttBroker)
 #     LocalResponseTopic = "RUSMARTLAB/"+MSG["APP_ID"]
 #     print("Local Reponse Topic: " + LocalResponseTopic + "\n")
@@ -331,7 +308,7 @@ def Thread162(MSG_Tuple, payload, topic, event):
 #     if MSG["APP_ID"] == "1":
 #         global AlertEnable
 #         AlertEnable = True
-#     response = '4,1,2,29,0,' + MSG["APP_ID"] + ',' + "11" + ',' + NCAP_ID + ',' + TIM_ID + ',' + '1,' + MSG["XDCR_ChanID"]
+#     response = '4,1,2,29,0,' + MSG["APP_ID"] + ',' + "11" + ',' + NCAP_ID + ',' + TIM_ID + ',' + '1,' + MSG["XDCR_ChanIDs"]
 #     #publish.single(ResponseTopic, response, hostname=mqttBroker)
 #     LocalResponseTopic = "RUSMARTLAB/"+MSG["APP_ID"]
 #     print("Local Reponse Topic: " + LocalResponseTopic + "\n")
@@ -354,7 +331,7 @@ def Thread162(MSG_Tuple, payload, topic, event):
 #     if MSG["APP_ID"] == "1":
 #         global AlertEnable
 #         AlertEnable = False
-#     response = '4,2,2,29,0,' + MSG["APP_ID"] + ',' + "11" + ',' + NCAP_ID + ',' + TIM_ID + ',' + '1,' + MSG["XDCR_ChanID"]
+#     response = '4,2,2,29,0,' + MSG["APP_ID"] + ',' + "11" + ',' + NCAP_ID + ',' + TIM_ID + ',' + '1,' + MSG["XDCR_ChanIDs"]
 #     #publish.single(ResponseTopic, response, hostname=mqttBroker)
 #     LocalResponseTopic = "RUSMARTLAB/"+MSG["APP_ID"]
 #     print("Local Reponse Topic: " + LocalResponseTopic + "\n")
@@ -383,4 +360,3 @@ while True:
     schedule.run_pending()
     
     
-
