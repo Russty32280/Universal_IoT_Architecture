@@ -1,8 +1,8 @@
 #This code connects to a private shiftr.io instance
 #using python. It establishes itself as an NCAP and
 #broadcasts its name on a known channel so any TIMs
-#can communicate to it. Once a TIM or APP reaches out to it
-#it creates an uplink and downlink channel to that device.
+#can communicate to it. Once a TIM reaches out to it
+#it creates an uplink and downlink channel to that TIM.
 
 import paho.mqtt.client as mqtt
 import schedule
@@ -358,5 +358,4 @@ schedule.every(5).seconds.do(joinMessage)
 
 while True:
     schedule.run_pending()
-    
     
