@@ -1,8 +1,8 @@
 #This code connects to a private shiftr.io instance
-#using python. It establishes itself as an APP and
-#connects to the NCAP on the network.
-#Also features a simple GUI for connecting to the networking
-#and sending messages to the NCAP.
+#using python. It establishes itself as an NCAP and
+#broadcasts its name on a known channel so any TIMs
+#can communicate to it. Once a TIM reaches out to it
+#it creates an uplink and downlink channel to that TIM.
 
 import paho.mqtt.client as mqtt
 import schedule
@@ -180,3 +180,4 @@ def NCAPResponse():
 
 window.after(0, NCAPResponse)
 window.mainloop()
+
